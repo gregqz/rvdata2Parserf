@@ -1,0 +1,68 @@
+#! /usr/bin/env ruby
+require 'zlib'
+
+class RvParser
+    attr_accessor :type
+    attr_reader :target
+
+    def initialize(target)
+        @target = target
+        @type = isRvdata? ? 'unpack' : isExport? ? 'pack' : 'other'
+    end
+
+    def unpack
+        exportPath = File.join File.dirname(@target), 'exports'
+        index = []
+        unless File.exists?(exportPath)
+            if defined?(FileUtils)
+                FileUtils.mkdir exportPath
+            else
+                raise "error: could not create directory \"#{exportPath}\", please create it personally"
+            end
+        end
+        Marshal.load(File.binread(target)).each.with_index do |cont, i|
+            id, name, code = cont
+            name = "#{name}_#{i}" if name.size and index.eql?(name)
+            index.push name
+            next unless name.size
+            next if id.nil? or (code.size == 0)
+            code = Zlib::Inflate.inflate(code).force_encoding("utf-8")
+            File.open(File.join(exportPath, "#{name}.rb"), "wb").write code
+        end
+        File.open(File.join(exportPath, ".index"), "wb").write index.join("\n")
+        puts 'unpack success'
+    end
+
+    def pack
+        indexPath = File.join(@target, '.index')
+        data = []
+        File.read(indexPath).split("\n").each do |name|
+            file = File.join(@target, name) + '.rb'
+            code = File.exists?(file) ? Zlib::Deflate.deflate(File.read(file)) : ''
+            data.push [Random.rand(100000), name, code]
+        end
+        puts Marshal.dump data
+    end 
+
+    def isRvdata?
+        return (File.exists?(@target) and /\.rvdata2$/ =~ @target)
+    end
+
+    def isExport?
+        return File.exists? File.join(@target, '.index')
+    end
+end
+
+begin
+    parser = RvParser.new(ARGV[0].to_s)
+    case parser.type
+    when 'unpack'
+        parser.unpack
+    when 'pack'
+        parser.pack
+    else
+        raise 'error: unknown input'
+    end
+rescue Exception => e
+    puts e
+end
