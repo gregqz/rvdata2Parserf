@@ -14,9 +14,9 @@ class RvParser
         exportPath = File.join File.dirname(@target), 'exports'
         index = []
         unless File.exists?(exportPath)
-            if defined?(FileUtils)
-                FileUtils.mkdir exportPath
-            else
+            begin
+                Dir.mkdir exportPath
+            rescue Exception => e
                 raise "error: could not create directory \"#{exportPath}\", please create it personally"
             end
         end
