@@ -1,68 +1,204 @@
 #! /usr/bin/env ruby
+#A fork of this script https://gist.github.com/ekoneko/9658609; and utilizing 
+#https://stackoverflow.com/questions/11728120/marshaling-and-undefined-attributes-classes
+#This script unpacks and packs rvdata2 files, both object and scripts. Into a "Human-readable"
+#Format, all thats needed is https://rubygems.org/gems/rpg-maker-rgss3/versions/1.02.0
+
 require 'zlib'
+require 'RPG'
+require 'YAML'
+
+class AutoObject
+  def method_missing(*args,&b)
+    if args.size == 1 
+      name = args[0]
+      if instance_variable_defined? "@#{name}"
+        self.class.send :attr_accessor, name
+        send(*args)
+      else
+        super
+      end
+    elsif args.size == 2 && args[0].to_s[/=$/]
+      name = args[0].to_s[0...-1]
+      if instance_variable_defined? "@#{name}"
+        self.class.send :attr_accessor, name
+        send(*args)
+      else
+        super
+      end
+    end
+  end
+end
+
+def Marshal.auto_load(data)
+  Marshal.load(data)
+rescue ArgumentError => e
+  n = 0
+  classname = e.message[%r(^undefined class/module (.+)$), 1]
+  raise e unless classname
+  
+  objectlist = classname.split("::")
+  objectlist.inject(Object) do |outer, inner|
+    if inner.nil?
+      print "inner is empty \n"
+    end
+    if outer.nil?
+      print "outer is empty \n"
+    end
+    if !outer.const_defined? inner
+      outer.const_set inner, Class.new(AutoObject)
+    else
+      outer.const_get inner
+    end
+  end
+  retry
+end
+
+def YAML.auto_load(data)
+  YAML::load(data)
+rescue ArgumentError => e
+  n = 0
+  classname = e.message[%r(^undefined class/module (.+)$), 1]
+  raise e unless classname
+  
+  objectlist = classname.split("::")
+  objectlist.inject(Object) do |outer, inner|
+    if inner.nil?
+      print "inner is empty \n"
+    end
+    if outer.nil?
+      print "outer is empty \n"
+    end
+    if !outer.const_defined? inner
+      outer.const_set inner, Class.new(AutoObject)
+    else
+      outer.const_get inner
+    end
+  end
+  retry
+end
+
 
 class RvParser
     attr_accessor :type
     attr_reader :target
-
-    def initialize(target)
+ 
+    def initialize(target, type,mode)
         @target = target
-        @type = isRvdata? ? 'unpack' : isExport? ? 'pack' : 'other'
+        @type = type
+        @mode = mode
     end
-
+ 
     def unpack
-        exportPath = File.join File.dirname(@target), 'exports'
+        fielname = File.basename(@target,".rvdata2").dup
+        fielname.concat('_exports')
+        puts fielname
+        exportPath = File.join File.dirname(@target), fielname
         index = []
-        unless File.exists?(exportPath)
+        puts @mode <=> 'object'
+        if !(File.exists?(exportPath)) && (@mode.eql? 'script')
             begin
                 Dir.mkdir exportPath
             rescue Exception => e
                 raise "error: could not create directory \"#{exportPath}\", please create it personally"
             end
         end
-        Marshal.load(File.binread(target)).each.with_index do |cont, i|
+        require 'RPG'
+        objectslist = []
+        marshalloadded = Marshal.auto_load(File.binread(target))
+        #print "#{marshalloadded} \n"
+        marshalloadded.each.with_index do |cont, i|
             id, name, code = cont
-            name = "#{name}_#{i}" if name.size and index.eql?(name)
-            index.push name
-            next unless name.size
-            next if id.nil? or (code.size == 0)
-            code = Zlib::Inflate.inflate(code).force_encoding("utf-8")
-            File.open(File.join(exportPath, "#{name}.rb"), "wb").write code
+            #print "\"#{cont}\" \n"
+            #print "\"#{id}\" \n"
+            #print "\"#{name}\" \n"
+            if !cont.nil? && name.nil? 
+                puts "Not a Script"
+                if (@mode.eql? 'object')
+                    objectslist << cont
+                    #puts cont.inspect
+                end
+            end
+            if !cont.nil? && !name.nil?
+                name = "#{name}_#{i}" if name.size and index.eql?(name)
+                index.push name
+                next unless name.size
+                next if id.nil? or (code.size == 0)
+                code = Zlib::Inflate.inflate(code).force_encoding("utf-8")
+                File.open(File.join(exportPath, "#{name}.rb"), "wb").write code
+            end
         end
-        File.open(File.join(exportPath, ".index"), "wb").write index.join("\n")
+        if @mode.eql? 'script'
+            File.open(File.join(exportPath, ".index"), "wb").write index.join("\n")
+        end
+        if objectslist.length > 0
+            File.open(fielname.concat(".yaml"), "w") do |file|
+              objectslist.each do |object|
+                file.puts YAML::dump(object)
+                file.puts ""
+              end
+            end
+        end
         puts 'unpack success'
     end
-
+ 
     def pack
-        indexPath = File.join(@target, '.index')
-        data = []
-        File.read(indexPath).split("\n").each do |name|
-            file = File.join(@target, name) + '.rb'
-            code = File.exists?(file) ? Zlib::Deflate.deflate(File.read(file)) : ''
-            data.push [Random.rand(100000), name, code]
+        if @mode.eql? 'script'
+            indexPath = File.join(@target, '.index')
+            data = []
+            File.read(indexPath).split("\n").each do |name|
+                file = File.join(@target, name) + '.rb'
+                code = File.exists?(file) ? Zlib::Deflate.deflate(File.read(file)) : ''
+                data.push [Random.rand(100000), name, code]
+            end
+            feilname = File.basename(@target)
+            feilname = feilname.split("_")[0]
+            targetdum = @target.dup.concat("/")
+            feil = targetdum.concat(feilname.concat(".rvdata2"))
+            File.open(feil, 'wb') do |f|
+                f.puts Marshal.dump data
+            end
         end
-        puts Marshal.dump data
-    end 
-
-    def isRvdata?
-        return (File.exists?(@target) and /\.rvdata2$/ =~ @target)
-    end
-
-    def isExport?
-        return File.exists? File.join(@target, '.index')
+        if @mode.eql? 'object'
+            array = []
+            $/="\n\n"
+            File.open(target, "r").each do |object|
+              array << YAML::auto_load(object)
+            end
+            feilname = File.basename(@target)
+            feilname = feilname.split("_")[0].concat(".rvdata2")
+            dir = Dir.pwd.dup.concat("/")
+            feilname = dir.concat(feilname)
+            puts feilname
+            puts array
+            File.open(feilname, 'wb') do |f| 
+                array.insert(0, nil)
+                f.write(Marshal.dump(array))
+            end
+        end
     end
 end
-
+ 
 begin
-    parser = RvParser.new(ARGV[0].to_s)
+    case ARGV[2].to_s
+    when 'object'
+        puts 'Object Mode'
+    when 'script'
+        puts 'Script Mode'
+    else
+        raise 'error: unknown input; please type ruby script_rvdata2_unpack.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\' '
+    end
+    parser = RvParser.new(ARGV[0].to_s,ARGV[1].to_s,ARGV[2].to_s)
+    puts ARGV[0].to_s
+    puts ARGV[1].to_s
     case parser.type
     when 'unpack'
         parser.unpack
     when 'pack'
         parser.pack
     else
-        raise 'error: unknown input'
+        raise 'error: unknown input; please type ruby script_rvdata2_unpack.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\''
     end
-rescue Exception => e
-    puts e
+    rescue Exception => e
+        puts e
 end
