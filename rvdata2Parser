@@ -4,6 +4,7 @@
 #This script unpacks and packs rvdata2 files, both object and scripts. Into a "Human-readable"
 #Format, all thats needed is https://rubygems.org/gems/rpg-maker-rgss3/versions/1.02.0
 #The table code comes from http://www.hbgames.org/forums/viewtopic.php?t=49838#
+#If you get caught in a loop, use the code from https://github.com/bluepixelmike/rpg-maker-rgss3/ directly in this script#
 #Keywords RPG, Unpacker, Ruby#
 
 require 'zlib'
