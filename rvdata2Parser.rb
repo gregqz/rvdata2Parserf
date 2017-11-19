@@ -246,7 +246,7 @@ begin
     when 'pack'
         parser.pack
     else
-        raise 'error: unknown input; please type ruby script_rvdata2_unpack.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\''
+        raise 'error: unknown input; please type ruby rvdata2Parser.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\''
     end
     rescue Exception => e
         puts e
