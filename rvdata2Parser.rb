@@ -205,7 +205,7 @@ class RvParser
                 f.puts Marshal.dump data
             end
         end
-        if (@mode.eql? 'map') || (@mode.eql? 'object')
+        if (@mode.eql? 'object')
             array = []
             $/="\n\n"
             File.open(target, "r").each do |object|
@@ -221,6 +221,23 @@ class RvParser
             File.open(feilname, 'wb') do |f| 
                 array.insert(0, nil)
                 f.write(Marshal.dump(array))
+            end
+        end
+        if (@mode.eql? 'map')
+            array = []
+            $/="\n\n"
+            File.open(target, "r").each do |object|
+              array << YAML::auto_load(object)
+            end
+            feilname = File.basename(@target)
+            feilname = feilname.split("_")[0].concat(".rvdata2")
+            dir = Dir.pwd.dup.concat("/")
+            feilname = dir.concat(feilname)
+            puts feilname
+            puts array
+            puts array[0].inspect
+            File.open(feilname, 'wb') do |f| 
+                f.write(Marshal.dump(array[0]))
             end
         end
     end
