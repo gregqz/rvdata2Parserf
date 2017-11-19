@@ -27,5 +27,5 @@ I would like to thank the following
 
 - ekoneko for providing the inital script
 - Stackoverflow user marcus erronius with https://stackoverflow.com/questions/11728120/marshaling-and-undefined-attributes-classes
-- HBGames.org users: vgvgf,Raku, and trebor777 for figuring out the implementation of the RPG::Table object http://www.hbgames.org/forums/viewtopic.php?t=49838#
+- HBGames.org users: vgvgf, Raku, and trebor777 for figuring out the implementation of the RPG::Table object http://www.hbgames.org/forums/viewtopic.php?t=49838#
 
