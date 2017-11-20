@@ -252,7 +252,7 @@ begin
     when 'map'
         puts 'Map mode'
     else
-        raise 'error: unknown input; please type ruby script_rvdata2_unpack.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\' '
+        raise 'error: unknown input; please type ruby rvdata2Parser.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object/map\''
     end
     parser = RvParser.new(ARGV[0].to_s,ARGV[1].to_s,ARGV[2].to_s)
     puts ARGV[0].to_s
@@ -263,7 +263,7 @@ begin
     when 'pack'
         parser.pack
     else
-        raise 'error: unknown input; please type ruby rvdata2Parser.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object\''
+        raise 'error: unknown input; please type ruby rvdata2Parser.rb \'topdir/dir/dir2/..../fileordir\' \'unpack/pack\' \'script/object/map\''
     end
     rescue Exception => e
         puts e
