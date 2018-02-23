@@ -1,5 +1,5 @@
 # rvdata2Parserf
-This is a ruby script that is a fork of https://gist.github.com/ekoneko/9658609, designed to unpack and repack .rvdata2 files.
+This is a ruby script that is a fork of https://gist.github.com/ekoneko/9658609, designed to unpack and repack (or parse or whatever terminology you wish to use) .rvdata2 files associated with RPG Maker.
 There are 3 types of files that I have found, Script, Object, and Map. The goal of this script is to be able to handle all 3; with no guarantee that it will 
 work or not break anything.
 ## Installation
